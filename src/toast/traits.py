@@ -719,76 +719,80 @@ class TraitConfig(HasTraits):
         kw = dict()
         kw["name"] = name
         for k, v in props.items():
-            if v["type"] == "Unit":
-                if v["value"] != "unit":
-                    raise RuntimeError(
-                        f"Unit trait does not have 'unit' as the conf value"
-                    )
-                if v["unit"] == "None":
+            try:
+                if v["type"] == "Unit":
+                    if v["value"] != "unit":
+                        raise RuntimeError(
+                            f"Unit trait does not have 'unit' as the conf value"
+                        )
+                    if v["unit"] == "None":
+                        kw[k] = None
+                    else:
+                        kw[k] = u.Unit(v["unit"])
+                    # print(f"from_config {name}:    {k} = {kw[k]}")
+                elif v["type"] == "Quantity":
+                    # print(f"from_config {name}:    {v}")
+                    if v["value"] == "None":
+                        kw[k] = None
+                    else:
+                        kw[k] = u.Quantity(float(v["value"]), u.Unit(v["unit"]))
+                    # print(f"from_config {name}:    {k} = {kw[k]}")
+                elif v["type"] == "set":
+                    if v["value"] == "None":
+                        kw[k] = None
+                    elif v["value"] == "{}":
+                        kw[k] = set()
+                    else:
+                        kw[k] = set([trait_string_to_scalar(x) for x in v["value"]])
+                    # print(f"from_config {name}:    {k} = {kw[k]}")
+                elif v["type"] == "list":
+                    if v["value"] == "None":
+                        kw[k] = None
+                    elif v["value"] == "[]":
+                        kw[k] = list()
+                    else:
+                        kw[k] = list([trait_string_to_scalar(x) for x in v["value"]])
+                    # print(f"from_config {name}:    {k} = {kw[k]}")
+                    continue
+                elif v["type"] == "tuple":
+                    if v["value"] == "None":
+                        kw[k] = None
+                    elif v["value"] == "()":
+                        kw[k] = tuple()
+                    else:
+                        kw[k] = tuple([trait_string_to_scalar(x) for x in v["value"]])
+                    # print(f"from_config {name}:    {k} = {kw[k]}")
+                elif v["type"] == "dict":
+                    if v["value"] == "None":
+                        kw[k] = None
+                    elif v["value"] == "{}":
+                        kw[k] = dict()
+                    else:
+                        # print(f"from_config input dict = {v['value']}")
+                        kw[k] = {
+                            x: trait_string_to_scalar(y) for x, y in v["value"].items()
+                        }
+                    # print(f"from_config {name}:    {k} = {kw[k]}")
+                elif v["value"] == "None":
+                    # Regardless of type, we set this to None
                     kw[k] = None
+                elif (
+                    v["type"] == "float"
+                    or v["type"] == "int"
+                    or v["type"] == "str"
+                    or v["type"] == "bool"
+                ):
+                    kw[k] = trait_string_to_scalar(v["value"])
+                    # print(f"from_config {name}:    {k} = {kw[k]}")
+                elif v["type"] == "unknown":
+                    # This was a None value in the TOML or similar unknown object
+                    pass
                 else:
-                    kw[k] = u.Unit(v["unit"])
-                # print(f"from_config {name}:    {k} = {kw[k]}")
-            elif v["type"] == "Quantity":
-                # print(f"from_config {name}:    {v}")
-                if v["value"] == "None":
-                    kw[k] = None
-                else:
-                    kw[k] = u.Quantity(float(v["value"]), u.Unit(v["unit"]))
-                # print(f"from_config {name}:    {k} = {kw[k]}")
-            elif v["type"] == "set":
-                if v["value"] == "None":
-                    kw[k] = None
-                elif v["value"] == "{}":
-                    kw[k] = set()
-                else:
-                    kw[k] = set([trait_string_to_scalar(x) for x in v["value"]])
-                # print(f"from_config {name}:    {k} = {kw[k]}")
-            elif v["type"] == "list":
-                if v["value"] == "None":
-                    kw[k] = None
-                elif v["value"] == "[]":
-                    kw[k] = list()
-                else:
-                    kw[k] = list([trait_string_to_scalar(x) for x in v["value"]])
-                # print(f"from_config {name}:    {k} = {kw[k]}")
-                continue
-            elif v["type"] == "tuple":
-                if v["value"] == "None":
-                    kw[k] = None
-                elif v["value"] == "()":
-                    kw[k] = tuple()
-                else:
-                    kw[k] = tuple([trait_string_to_scalar(x) for x in v["value"]])
-                # print(f"from_config {name}:    {k} = {kw[k]}")
-            elif v["type"] == "dict":
-                if v["value"] == "None":
-                    kw[k] = None
-                elif v["value"] == "{}":
-                    kw[k] = dict()
-                else:
-                    # print(f"from_config input dict = {v['value']}")
-                    kw[k] = {
-                        x: trait_string_to_scalar(y) for x, y in v["value"].items()
-                    }
-                # print(f"from_config {name}:    {k} = {kw[k]}")
-            elif v["value"] == "None":
-                # Regardless of type, we set this to None
-                kw[k] = None
-            elif (
-                v["type"] == "float"
-                or v["type"] == "int"
-                or v["type"] == "str"
-                or v["type"] == "bool"
-            ):
-                kw[k] = trait_string_to_scalar(v["value"])
-                # print(f"from_config {name}:    {k} = {kw[k]}")
-            elif v["type"] == "unknown":
-                # This was a None value in the TOML or similar unknown object
-                pass
-            else:
-                # This is either a class instance of some arbitrary type,
-                # or a callable.
-                pass
+                    # This is either a class instance of some arbitrary type,
+                    # or a callable.
+                    pass
+            except ValueError as e:
+                msg = f"  Failed to parse '{k}' = {v}:\n    ^---- {e}"
+                raise ValueError(msg)
         # Instantiate class and return
         return cls(**kw)

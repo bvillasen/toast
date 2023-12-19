@@ -1315,7 +1315,11 @@ def create_from_config(conf):
             # We have a TraitConfig object with all references resolved.
             # Instantiate it.
             # print("PARSE creating TraitConfig {}".format(node_name))
-            obj = TraitConfig.from_config(node_name, parent[node_name])
+            try:
+                obj = TraitConfig.from_config(node_name, parent[node_name])
+            except ValueError as e:
+                msg = f"Failed to parse '{node_name}'\n    ^---- {e}"
+                raise ValueError(msg)
             # print("PARSE instantiated {}".format(obj))
             parent[node_name] = obj
 
